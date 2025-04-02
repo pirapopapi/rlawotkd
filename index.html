@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>블랙잭 변형 게임</title>
+    <title>전략 카드 게임</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -43,17 +43,17 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        .hit-btn { background-color: #28a745; color: white; }
-        .stand-btn { background-color: #ffc107; color: black; }
+        .draw-btn { background-color: #28a745; color: white; }
+        .stop-btn { background-color: #ffc107; color: black; }
         .restart-btn { background-color: #dc3545; color: white; }
     </style>
 </head>
 <body>
     <div class="game-container">
-        <h1>블랙잭 변형 게임</h1>
-        <p>초기 자금: <span id="money">100</span> 달러</p>
-        <p>배팅 금액: <input type="number" id="bet" min="1" value="10"></p>
-        <button onclick="startGame()">배팅 후 시작</button>
+        <h1>전략 카드 게임</h1>
+        <p>보유 코인: <span id="coins">100</span></p>
+        <p>보상 설정: <input type="number" id="bet" min="1" value="10"></p>
+        <button onclick="startGame()">게임 시작</button>
         
         <div>
             <h2>당신의 카드</h2>
@@ -61,23 +61,23 @@
             <p>점수: <span id="player-score">0</span></p>
         </div>
         <div>
-            <h2>딜러의 카드</h2>
-            <div class="card-container" id="dealer-cards"></div>
-            <p>점수: <span id="dealer-score">?</span></p>
+            <h2>AI의 카드</h2>
+            <div class="card-container" id="ai-cards"></div>
+            <p>점수: <span id="ai-score">?</span></p>
         </div>
         <div class="buttons">
-            <button class="hit-btn" onclick="hit()" disabled>Hit</button>
-            <button class="stand-btn" onclick="stand()" disabled>Stand</button>
-            <button class="restart-btn" onclick="restartGame()">Restart</button>
+            <button class="draw-btn" onclick="drawCard()" disabled>카드 뽑기</button>
+            <button class="stop-btn" onclick="stopDrawing()" disabled>멈추기</button>
+            <button class="restart-btn" onclick="restartGame()">다시 시작</button>
         </div>
         <p id="result"></p>
     </div>
     
     <script>
-        let money = 100;
+        let coins = 100;
         let deck = [];
         let playerHand = [];
-        let dealerHand = [];
+        let aiHand = [];
         
         function createDeck() {
             const suits = ['♠️', '♥️', '♦️', '♣️'];
@@ -101,63 +101,58 @@
             return score;
         }
         
-        function updateUI(revealDealer = false) {
+        function updateUI(revealAI = false) {
             document.getElementById("player-cards").innerHTML = playerHand.map(card => `<div class='card'>${card.rank}${card.suit}</div>`).join('');
-            document.getElementById("dealer-cards").innerHTML = `<div class='card'>${dealerHand[0].rank}${dealerHand[0].suit}</div>` + 
-                (revealDealer ? dealerHand.slice(1).map(card => `<div class='card'>${card.rank}${card.suit}</div>`).join('') 
+            document.getElementById("ai-cards").innerHTML = `<div class='card'>${aiHand[0].rank}${aiHand[0].suit}</div>` + 
+                (revealAI ? aiHand.slice(1).map(card => `<div class='card'>${card.rank}${card.suit}</div>`).join('') 
                 : `<div class='card hidden-card'>?</div>`);
             document.getElementById("player-score").textContent = calculateScore(playerHand);
-            document.getElementById("dealer-score").textContent = revealDealer ? calculateScore(dealerHand) : "?";
-            document.getElementById("money").textContent = money;
-            if (money <= 0) {
-                document.getElementById("result").textContent = "파산! 더 이상 플레이할 수 없습니다.";
-                disableGame();
-            }
+            document.getElementById("ai-score").textContent = revealAI ? calculateScore(aiHand) : "?";
+            document.getElementById("coins").textContent = coins;
         }
         
         function startGame() {
-            if (money <= 0) return;
             deck = createDeck();
             playerHand = [deck.pop(), deck.pop()];
-            dealerHand = [deck.pop(), deck.pop()];
+            aiHand = [deck.pop(), deck.pop()];
             document.getElementById("result").textContent = "";
-            document.querySelector(".hit-btn").disabled = false;
-            document.querySelector(".stand-btn").disabled = false;
+            document.querySelector(".draw-btn").disabled = false;
+            document.querySelector(".stop-btn").disabled = false;
             updateUI();
         }
         
-        function hit() {
+        function drawCard() {
             playerHand.push(deck.pop());
             updateUI();
             if (calculateScore(playerHand) > 21) {
-                document.getElementById("result").textContent = "버스트! 당신이 졌습니다.";
-                money -= parseInt(document.getElementById("bet").value);
+                document.getElementById("result").textContent = "패배! 점수를 초과하였습니다.";
+                coins -= parseInt(document.getElementById("bet").value);
                 disableGame();
             }
         }
         
-        function stand() {
-            while (calculateScore(dealerHand) < 17 && calculateScore(dealerHand) < calculateScore(playerHand)) {
-                dealerHand.push(deck.pop());
+        function stopDrawing() {
+            while (calculateScore(aiHand) < 17) {
+                aiHand.push(deck.pop());
             }
             updateUI(true);
             let playerScore = calculateScore(playerHand);
-            let dealerScore = calculateScore(dealerHand);
-            if (dealerScore > 21 || playerScore > dealerScore) {
-                document.getElementById("result").textContent = "당신이 승리했습니다!";
-                money += parseInt(document.getElementById("bet").value) * 1.5;
-            } else if (playerScore === dealerScore) {
+            let aiScore = calculateScore(aiHand);
+            if (aiScore > 21 || playerScore > aiScore) {
+                document.getElementById("result").textContent = "승리!";
+                coins += parseInt(document.getElementById("bet").value) * 1.5;
+            } else if (playerScore === aiScore) {
                 document.getElementById("result").textContent = "무승부!";
             } else {
-                document.getElementById("result").textContent = "딜러가 승리했습니다.";
-                money -= parseInt(document.getElementById("bet").value);
+                document.getElementById("result").textContent = "패배!";
+                coins -= parseInt(document.getElementById("bet").value);
             }
             disableGame();
         }
         
         function disableGame() {
-            document.querySelector(".hit-btn").disabled = true;
-            document.querySelector(".stand-btn").disabled = true;
+            document.querySelector(".draw-btn").disabled = true;
+            document.querySelector(".stop-btn").disabled = true;
         }
     </script>
 </body>
